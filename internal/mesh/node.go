@@ -1204,7 +1204,7 @@ func (n *Node) localKnownPeer() knownPeer {
 }
 
 func (n *Node) handlePeerAnnounce(peer *peerConn, env gossip.Envelope) {
-	verified := verifyPeerAnnouncementEnvelope(env)
+	verified := directSenderMatches(peer, env) && verifyPeerAnnouncementEnvelope(env)
 	n.handleKnownPeerEnvelope(peer, env, gossip.TypePeerAnnounce, verified)
 }
 
@@ -1228,8 +1228,11 @@ func (n *Node) handleKnownPeerEnvelope(peer *peerConn, env gossip.Envelope, forw
 		return
 	}
 	trustedSelfAnnouncement := peer != nil && env.AdvertisedPeerID == peer.id
-	if forwardType == gossip.TypePeerAnnounce && !trustedSelfAnnouncement && !verifiedEnvelope {
-		return
+	if forwardType == gossip.TypePeerAnnounce {
+		validSignedAnnouncement := verifyPeerAnnouncementEnvelope(env)
+		if !trustedSelfAnnouncement && !verifiedEnvelope && !validSignedAnnouncement {
+			return
+		}
 	}
 	trustCapabilities := verifySupernodeStatusEnvelope(env)
 	changed := false
